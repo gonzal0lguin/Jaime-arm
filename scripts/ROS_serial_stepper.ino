@@ -11,11 +11,13 @@
 
 #define stepPin 9
 #define dirPin 8
+#define enablePin 10
+#define servoPin 7
 
 ros::NodeHandle  nh;
 
 Servo servo;
-AccelStepper nema = AccelStepper(AccelStepper::DRIVER, stepPin, dirPin);
+AccelStepper stepper = AccelStepper(AccelStepper::DRIVER, stepPin, dirPin);
 
 void servo_cb( const std_msgs::Float64& cmd_msg){
   servo.write(cmd_msg.data); //set servo angle, should be from 0-180  
@@ -23,17 +25,26 @@ void servo_cb( const std_msgs::Float64& cmd_msg){
 }
 
 
+void stepper_enable(){
+  digitalWrite(enablePin, LOW);
+}
+
+void stepper_disable(){
+  digitalWrite(enablePin, HIGH);
+}
+
+
 void moveStepper(int p, float speed, float accel){
   nema.setMaxSpeed(speed);
   nema.setAcceleration(accel);
-  //nema.disableOutputs();
+  stepper_enable();
   nema.moveTo(p);
 
   while (nema.distanceToGo() != 0){
     nema.run();
     }
     
-  //nema.enableOutputs();
+  stepper_disable();
   }
 
 void stepper_cb(const std_msgs::Float64& cmd_msg){
@@ -41,17 +52,20 @@ void stepper_cb(const std_msgs::Float64& cmd_msg){
   }
 
 
-//ros::Subscriber<std_msgs::UInt16> sub("servo", servo_cb);
-ros::Subscriber<std_msgs::Float64> sub("stepper", stepper_cb);
+ros::Subscriber<std_msgs::Float64> subservo("/servo", servo_cb);
+ros::Subscriber<std_msgs::Float64> substepper("/stepper", stepper_cb);
 
 void setup(){
   pinMode(stepPin, OUTPUT);
   pinMode(dirPin, OUTPUT);
+  pinMode(enablePin, OUTPUT);
+  pinMode(servoPin, OUTPUT);
 
   nh.initNode();
-  nh.subscribe(sub);
+  nh.subscribe(subservo);
+  nh.subscribe(substepper);
   
-  //servo.attach(9); //attach it to pin 9
+  servo.attach(servoPin);
 }
 
 void loop(){
